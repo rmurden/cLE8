@@ -11,17 +11,18 @@ set.seed(217)
 library(tidyverse); library(sf); library(tigris); library(spdep); library(ggplot2); 
 library(ggspatial); library(readxl); library(RColorBrewer); library(classInt);
 require(INLA)
+library(gridExtra)
 options(tigris_use_cache = TRUE)
 
 # 1. Load your dataset
-setwd( "C:/Users/rmurden/OneDrive - Emory/Documents/ADJOINT 2025/Programs")
-data.1 <- read.csv("../Data/cle8_three_scores_txgaca_within_state.csv")
+setwd( "C:/Users/rmurden/OneDrive - Emory/Documents/GitHub/cLE8")
+data.1 <- read.csv("Data/cle8_three_scores_txgaca_within_state.csv")
 names(data.1)
 dim(data.1) # 471 obs. (3=471 counties)
 data.1$GEOID <- sprintf("%05d", as.numeric(data.1$CountyFIPS))
 
 # ## Merge with outcome data
-outcome.dat <- read.csv("../Data/PLACES__County_Data_(GIS_Friendly_Format)__2024_release_20260622.csv") %>%
+outcome.dat <- read.csv("Data/PLACES__County_Data_(GIS_Friendly_Format),_2024_release_20260622.csv") %>%
   select(STROKE_AdjPrev, STROKE_CrudePrev, CHD_CrudePrev, CHD_AdjPrev, CountyFIPS)
 
 names(outcome.dat)
@@ -156,14 +157,14 @@ hotspot_map <- ggplot(merged_proj) +
 # ggsave("Local_Morans_I_Hotspots.png", plot = hotspot_map, width = 11, height = 8.5, units = "in", dpi = 300)
 
 # Prepare data for modeling
-nb2INLA("../Data/map_CA.adj", nb_CA)
-g_CA <- inla.read.graph("../Data/map_CA.adj")
+nb2INLA("Data/map_CA.adj", nb_CA)
+g_CA <- inla.read.graph("Data/map_CA.adj")
 
-nb2INLA("../Data/map_GA.adj", nb_GA)
-g_GA <- inla.read.graph("../Data/map_GA.adj")
+nb2INLA("Data/map_GA.adj", nb_GA)
+g_GA <- inla.read.graph("Data/map_GA.adj")
 
-nb2INLA("../Data/map_TX.adj", nb_TX)
-g_TX <- inla.read.graph("../Data/map_TX.adj")
+nb2INLA("Data/map_TX.adj", nb_TX)
+g_TX <- inla.read.graph("Data/map_TX.adj")
 
 ################          Models          ################
 ## Same GLM formula for all states
@@ -189,9 +190,9 @@ formula.0.bym.TX <- CHD_AdjPrev ~ 1 + f(county_int, model = "bym2", graph = g_TX
 formula.1.bym.TX <- CHD_AdjPrev ~ 1 + scale(cle8_point) + f(county_int, model = "bym2", graph = g_TX)
 
 ##########   CA   ##########    
-##### GLMs for All-cause mortality in CA
+##### GLMs for CHD morbidity in CA
 ### Model 0: Intercept-only model
-mod.0.CA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.0.CA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -200,7 +201,7 @@ sum(mod.0.CA.glm$cpo$cpo)
 hist(mod.0.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.CA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.1.CA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -208,9 +209,9 @@ summary(mod.1.CA.glm)
 sum(mod.1.CA.glm$cpo$cpo) 
 hist(mod.1.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with ICAR for  mortality in CA
+##### GLMMs with ICAR for CHD morbidity in CA
 ### Model 0: Intercept-only model
-mod.0.CA.icar <- inla(formula.0.icar.CA, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.0.CA.icar <- inla(formula.0.icar.CA, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -219,7 +220,7 @@ sum(mod.0.CA.icar$cpo$cpo)
 hist(mod.0.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.CA.icar <- inla(formula.1.icar.CA, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.1.CA.icar <- inla(formula.1.icar.CA, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -227,9 +228,9 @@ summary(mod.1.CA.icar)
 sum(mod.1.CA.icar$cpo$cpo) 
 hist(mod.1.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with Besag-York-Mollie for  mortality in CA
+##### GLMMs with Besag-York-Mollie for CHD morbidity in CA
 ### Model 0: Intercept-only model
-mod.0.CA.bym <- inla(formula.0.bym.CA, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.0.CA.bym <- inla(formula.0.bym.CA, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -238,7 +239,7 @@ sum(mod.0.CA.bym$cpo$cpo)
 hist(mod.0.CA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.CA.bym <- inla(formula.1.bym.CA, family = "gaussian", data = merged_proj_CA, E = ExpectedCHD_AdjPrev,
+mod.1.CA.bym <- inla(formula.1.bym.CA, family = "gaussian", data = merged_proj_CA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -252,7 +253,7 @@ CA.mod.results = list("GLM 0 -CA" = mod.0.CA.glm, "GLM 1 -CA" = mod.1.CA.glm,
 
 extract.model.results <- function(model) {
   return(c("DIC" = model$dic$dic, "pD" = model$dic$p.eff, "WAIC" = model$waic$waic,
-  "pWAIC" = model$waic$p.eff,  model$mlik[2,1], "Sum CPO" = sum(model$cpo$cpo)))
+  "pWAIC" = model$waic$p.eff,  "Log Marginal Likelihood" = model$mlik[2,1], "Sum CPO" = sum(model$cpo$cpo)))
 }
 extract.fixed.effects <- function(model) {
   return(model$summary.fixed)
@@ -263,9 +264,9 @@ CA.out
 
 CA.fixed = do.call(rbind, lapply(CA.mod.results, extract.fixed.effects))
 ##########   GA   ##########    
-##### GLMs for All-cause mortality in GA
+##### GLMs for CHD morbidity in GA
 ### Model 0: Intercept-only model
-mod.0.GA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.0.GA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -274,7 +275,7 @@ sum(mod.0.GA.glm$cpo$cpo)
 hist(mod.0.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.GA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.1.GA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -282,9 +283,9 @@ summary(mod.1.GA.glm)
 sum(mod.1.GA.glm$cpo$cpo) 
 hist(mod.1.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with ICAR for All-cause mortality in GA
+##### GLMMs with ICAR for CHD morbidity in GA
 ### Model 0: Intercept-only model
-mod.0.GA.icar <- inla(formula.0.icar.GA, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.0.GA.icar <- inla(formula.0.icar.GA, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -293,7 +294,7 @@ sum(mod.0.GA.icar$cpo$cpo)
 hist(mod.0.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.GA.icar <- inla(formula.1.icar.GA, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.1.GA.icar <- inla(formula.1.icar.GA, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -301,9 +302,9 @@ summary(mod.1.GA.icar)
 sum(mod.1.GA.icar$cpo$cpo) 
 hist(mod.1.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with Besag-York-Mollie for All-cause mortality in GA
+##### GLMMs with Besag-York-Mollie for CHD morbidity in GA
 ### Model 0: Intercept-only model
-mod.0.GA.bym <- inla(formula.0.bym.GA, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.0.GA.bym <- inla(formula.0.bym.GA, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -312,7 +313,7 @@ sum(mod.0.GA.bym$cpo$cpo)
 hist(mod.0.GA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.GA.bym <- inla(formula.1.bym.GA, family = "gaussian", data = merged_proj_GA, E = ExpectedCHD_AdjPrev,
+mod.1.GA.bym <- inla(formula.1.bym.GA, family = "gaussian", data = merged_proj_GA,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -329,9 +330,9 @@ GA.out
 
 GA.fixed = do.call(rbind, lapply(GA.mod.results, extract.fixed.effects))
 ##########   TX   ##########    
-##### GLMs for All-cause mortality in TX
+##### GLMs for CHD morbidity in TX
 ### Model 0: Intercept-only model
-mod.0.TX.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_TX , E = ExpectedCHD_AdjPrev,
+mod.0.TX.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_TX ,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -340,7 +341,7 @@ sum(mod.0.TX.glm$cpo$cpo)
 hist(mod.0.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.TX.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_TX, E = ExpectedCHD_AdjPrev,
+mod.1.TX.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_TX,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -348,9 +349,9 @@ summary(mod.1.TX.glm)
 sum(mod.1.TX.glm$cpo$cpo) 
 hist(mod.1.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with ICAR for All-cause mortality in TX
+##### GLMMs with ICAR for CHD morbidity in TX
 ### Model 0: Intercept-only model
-mod.0.TX.icar <- inla(formula.0.icar.TX, family = "gaussian", data = merged_proj_TX, E = ExpectedCHD_AdjPrev,
+mod.0.TX.icar <- inla(formula.0.icar.TX, family = "gaussian", data = merged_proj_TX,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -359,7 +360,7 @@ sum(mod.0.TX.icar$cpo$cpo)
 hist(mod.0.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.TX.icar <- inla(formula.1.icar.TX, family = "gaussian", data = merged_proj_TX, E = ExpectedCHD_AdjPrev,
+mod.1.TX.icar <- inla(formula.1.icar.TX, family = "gaussian", data = merged_proj_TX,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -367,9 +368,9 @@ summary(mod.1.TX.icar)
 sum(mod.1.TX.icar$cpo$cpo) 
 hist(mod.1.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
-##### GLMMs with Besag-York-Mollie for All-cause mortality in TX
+##### GLMMs with Besag-York-Mollie for CHD morbidity in TX
 ### Model 0: Intercept-only model
-mod.0.TX.bym <- inla(formula.0.bym.TX, family = "gaussian", data = merged_proj_TX, E = ExpectedCHD_AdjPrev,
+mod.0.TX.bym <- inla(formula.0.bym.TX, family = "gaussian", data = merged_proj_TX,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -378,7 +379,7 @@ sum(mod.0.TX.bym$cpo$cpo)
 hist(mod.0.TX.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
 
 ### Model 1: CVH score as a covariate
-mod.1.TX.bym <- inla(formula.1.bym.TX, family = "gaussian", data = merged_proj_TX, E = ExpectedCHD_AdjPrev,
+mod.1.TX.bym <- inla(formula.1.bym.TX, family = "gaussian", data = merged_proj_TX,
                   control.predictor = list(compute = TRUE),
                   control.compute = list(return.marginals.predictor = TRUE, 
                                          dic = TRUE, cpo = TRUE, waic = TRUE))
@@ -401,19 +402,35 @@ phi.bym.1.TX <- mod.1.TX.bym$summary.hyperpar$mean[3]
 
 tau.m0 <- round(c(tau.bym.0.CA, tau.bym.0.GA, tau.bym.0.TX), 2)
 phi.m0 <- round(c(phi.bym.0.CA, phi.bym.0.GA, phi.bym.0.TX), 2)
+marg.var.m0 <- 1/tau.m0
+spat.var.m0 <- marg.var.m0*phi.m0
+
+
 tau.m1 <- round(c(tau.bym.1.CA, tau.bym.1.GA, tau.bym.1.TX), 2)
 phi.m1 <- round(c(phi.bym.1.CA, phi.bym.1.GA, phi.bym.1.TX), 2)
-tau.chage <- round((tau.m1 - tau.m0)/tau.m0, 3)*100
-phi.change <- round((phi.m1 - phi.m0)/phi.m0, 3)*100
+marg.var.m1 <- 1/tau.m1
+spat.var.m1 <- marg.var.m1*phi.m1
 
-TX.var.res <- cbind("Tau (M0)" = tau.m0,
-                    "Tau (M1)" = tau.m1,
-                    "%-Change in Tau" = tau.chage,
-                    "Phi (M0)" = phi.m0,
-                    "Phi (M1)" = phi.m1,
-                    "%-Change in Phi" =  phi.change)
-rownames(TX.var.res) <- c("CA", "GA", "TX" )
-write.csv(TX.var.res, "../Output/Results/CHD_Morbidity_variance_components.csv", row.names = TRUE)
+tau.change <- round((tau.m1 - tau.m0)/tau.m0, 3)*100
+phi.change <- round((phi.m1 - phi.m0)/phi.m0, 3)*100
+marg.var.change <- round((marg.var.m1 - marg.var.m0)/marg.var.m0, 3)*100
+spat.var.change <- round((spat.var.m1 - spat.var.m0)/spat.var.m0, 3)*100
+
+Var.res <- cbind("Tau (M0)" = tau.m0,
+                  "Tau (M1)" = tau.m1,
+                  "%-Change in Tau" = tau.change,
+                  "Phi (M0)" = phi.m0,
+                  "Phi (M1)" = phi.m1,
+                  "%-Change in Phi" =  phi.change,
+                  "1/Tau (M0)" = round(marg.var.m0,3),
+                  "1/Tau (M1)" = round(marg.var.m1,3),
+                  "%-Change in 1/Tau" = marg.var.change,
+                  "Spatial Var (M0)" = round(spat.var.m0,3),
+                  "Spatial Var (M1)" = round(spat.var.m1,3),
+                  "%-Change in Spatial Var" =  spat.var.change
+                 )
+rownames(Var.res) <- c("CA", "GA", "TX" )
+write.csv(Var.res, "Output/Results/CHD_Morbidity_variance_components.csv", row.names = TRUE)
 
 
 
@@ -429,11 +446,11 @@ TX.fixed = do.call(rbind, lapply(TX.mod.results, extract.fixed.effects))
 write.csv(rbind(CA.out %>% as.data.frame() %>% arrange(DIC),
                 GA.out %>% as.data.frame() %>% arrange(DIC),
                 TX.out %>% as.data.frame() %>% arrange(DIC)),
-          "../Output/Results/CHD_NB-model_results.csv",
+          "Output/Results/CHD_NB-model_results.csv",
           row.names = TRUE)
 
 write.csv(rbind(CA.fixed, GA.fixed, TX.fixed),
-          "../Output/Results/CHD_NB-model_fixed_effects.csv",
+          "Output/Results/CHD_NB-model_fixed_effects.csv",
           row.names = TRUE)
 
 
@@ -443,8 +460,8 @@ merged_proj_CA$RE_bym0 <- mod.0.CA.bym$summary.random$county_int$mean[1:58]
 merged_proj_GA$RE_bym0 <- mod.0.GA.bym$summary.random$county_int$mean[1:159]
 merged_proj_TX$RE_bym0 <- mod.0.TX.bym$summary.random$county_int$mean[1:254]
 
-merged_proj_all$RE_bym0 <- 
-names(mod.0.CA.bym$summary.random$county_int$ID)
+# merged_proj_all$RE_bym0 <-
+# names(mod.0.CA.bym$summary.random$county_int$ID)
 
 mod.0.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_bym0), color = "white", size = 0.1) +
@@ -454,7 +471,7 @@ mod.0.CA.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
-ggsave("../Output/Figures/CA_BYM_CHD_0.jpeg", plot = mod.0.CA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/CA_BYM_CHD_0.jpeg", plot = mod.0.CA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.0.TX.map <- ggplot() +
   geom_sf(data = merged_proj_TX, aes(fill = RE_bym0), color = "white", size = 0.1) +
@@ -463,7 +480,7 @@ mod.0.TX.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/TX_BYM_CHD_0.jpeg", plot = mod.0.TX.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/TX_BYM_CHD_0.jpeg", plot = mod.0.TX.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.0.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_bym0), color = "white", size = 0.1) +
@@ -473,18 +490,18 @@ mod.0.GA.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/GA_BYM_CHD_0.jpeg", plot = mod.0.GA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/GA_BYM_CHD_0.jpeg", plot = mod.0.GA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 combined.0 <- grid.arrange(mod.0.CA.map, mod.0.TX.map, mod.0.GA.map,  ncol = 2) 
-ggsave("../Output/Figures/Combined_BYM_CHD_0.jpeg", plot = combined.0, width = 6.67, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/Combined_BYM_CHD_0.jpeg", plot = combined.0, width = 6.67, height = 5, units = "in", dpi = 300)
 
 #####   CVH Models    #####
 merged_proj_CA$RE_bym1 <- mod.1.CA.bym$summary.random$county_int$mean[1:58]
 merged_proj_GA$RE_bym1 <- mod.1.GA.bym$summary.random$county_int$mean[1:159]
 merged_proj_TX$RE_bym1 <- mod.1.TX.bym$summary.random$county_int$mean[1:254]
 
-merged_proj_all$RE_bym1 <- 
-names(mod.1.CA.bym$summary.random$county_int$ID)
+# merged_proj_all$RE_bym1 <-
+# names(mod.1.CA.bym$summary.random$county_int$ID)
 
 mod.1.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_bym1), color = "white", size = 0.1) +
@@ -494,7 +511,7 @@ mod.1.CA.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
-ggsave("../Output/Figures/CA_BYM_CHD_1.jpeg", plot = mod.1.CA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/CA_BYM_CHD_1.jpeg", plot = mod.1.CA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.1.TX.map <- ggplot() +
   geom_sf(data = merged_proj_TX, aes(fill = RE_bym1), color = "white", size = 0.1) +
@@ -503,7 +520,7 @@ mod.1.TX.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/TX_BYM_CHD_1.jpeg", plot = mod.1.TX.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/TX_BYM_CHD_1.jpeg", plot = mod.1.TX.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.1.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_bym1), color = "white", size = 0.1) +
@@ -513,10 +530,10 @@ mod.1.GA.map <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/GA_BYM_CHD_1.jpeg", plot = mod.1.GA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/GA_BYM_CHD_1.jpeg", plot = mod.1.GA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 combined.1<-grid.arrange(mod.1.CA.map, mod.1.TX.map, mod.1.GA.map,  ncol = 2) 
-ggsave("../Output/Figures/Combined_BYM_CHD_1.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/Combined_BYM_CHD_1.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
 
 #####   Change from null to CVH models    #####
 merged_proj_CA$RE_change <- (merged_proj_CA$RE_bym1 - merged_proj_CA$RE_bym0)/abs(merged_proj_CA$RE_bym0)
@@ -538,8 +555,8 @@ summary(merged_proj_CA$RE_abs_magchange)
 summary(merged_proj_GA$RE_abs_magchange)
 summary(merged_proj_TX$RE_abs_magchange)
 
-merged_proj_all$RE_change <- 
-names(mod.1.CA.bym$summary.random$county_int$ID)
+# merged_proj_all$RE_change <-
+# names(mod.1.CA.bym$summary.random$county_int$ID)
 
 mod.1.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_change), color = "white", size = 0.1) +
@@ -549,7 +566,7 @@ mod.1.CA.map <- ggplot() +
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
-ggsave("../Output/Figures/CA_BYM_CHD_Change.jpeg", plot = mod.1.CA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/CA_BYM_CHD_Change.jpeg", plot = mod.1.CA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.1.TX.map <- ggplot() +
   geom_sf(data = merged_proj_TX, aes(fill = RE_change), color = "white", size = 0.1) +
@@ -559,7 +576,7 @@ mod.1.TX.map <- ggplot() +
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/TX_BYM_CHD_Change.jpeg", plot = mod.1.TX.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/TX_BYM_CHD_Change.jpeg", plot = mod.1.TX.map, width = 4, height = 5, units = "in", dpi = 300)
 
 mod.1.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_change), color = "white", size = 0.1) +
@@ -569,12 +586,12 @@ mod.1.GA.map <- ggplot() +
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
-ggsave("../Output/Figures/GA_BYM_CHD_Change.jpeg", plot = mod.1.GA.map, width = 4, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/GA_BYM_CHD_Change.jpeg", plot = mod.1.GA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 combined.1<-grid.arrange(mod.1.CA.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),
                          mod.1.TX.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),
                          mod.1.GA.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),  ncol = 2) 
-ggsave("../Output/Figures/Combined_RE_CHD_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
+ggsave("Output/Figures/Combined_RE_CHD_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
 
 
 
@@ -984,6 +1001,6 @@ ggsave("../Output/Figures/Combined_RE_CHD_Change_Maps.jpeg", plot = combined.1, 
 #                      "Model 0: BYM2", "Model 1: BYM2", "Model 2: BYM2")
 
 # GA.out
-# write.csv(CA.out, "../Output/Results/CA_model_AllCause_results.csv", row.names = TRUE)
-# write.csv(TX.out, "../Output/Results/TX_model_AllCause_results.csv", row.names = TRUE)  
-# write.csv(GA.out, "../Output/Results/GA_model_AllCause_results.csv", row.names = TRUE)  
+# write.csv(CA.out, "Output/Results/CA_model_AllCause_results.csv", row.names = TRUE)
+# write.csv(TX.out, "Output/Results/TX_model_AllCause_results.csv", row.names = TRUE)  
+# write.csv(GA.out, "Output/Results/GA_model_AllCause_results.csv", row.names = TRUE)  
