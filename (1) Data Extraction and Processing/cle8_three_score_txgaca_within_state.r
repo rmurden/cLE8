@@ -28,13 +28,13 @@
 #
 # =============================================================================
 
-library(tidyverse)
+library(tidyverse); library(readr)
 
 # =============================================================================
-# SECTION 1: CONFIGURATION
+# SECTION 1: CONFIGURATION (set path to cLE8 Github)
 # =============================================================================
 
-places_2024_path <- here::here("PLACES__County_Data_(GIS_Friendly_Format),_2024_release_20260622.csv")
+places_2024_path <- "Data/PLACES__County_Data_(GIS_Friendly_Format),_2024_release_20260622.csv"
 
 target_states <- c("Texas", "Georgia", "California")
 
@@ -158,7 +158,7 @@ cvh_category <- function(score) {
 
 cat("Loading 2024 PLACES data...\n")
 
-places_raw <- read_csv(
+places_raw <- read.csv(
   places_2024_path,
   show_col_types = FALSE,
   locale = locale(encoding = "UTF-8")
@@ -340,10 +340,79 @@ for (state in c("TX", "GA", "CA")) {
 }
 
 
+# =============================================================================
+# SECTION 10: Load 2024 CHR&R data and extract % 65 and Older
+# =============================================================================
+chrr_2024_path <- here::here("analytic_data2024.csv")
+
+chrr_2024<-read.csv(chrr_2024_path)
+
+
+# Check column names
+names(chrr_2024)
+names(chrr_2024)[1:10]
+
+###############################
+# % Population Age 65 and Older
+###############################
+
+# Load required packages
+library(dplyr)
+library(stringr)
+
+# Check the exact variable names related to age 65+
+grep("65",  names(chrr_2024), value = TRUE, ignore.case = TRUE)
+
+# Check the first 30 unique values of the 65+ raw variable
+unique( chrr_2024[["% 65 and Older raw value"]])[1:30]
+
+# Check how many missing values are already present
+table(is.na(chrr_2024[["% 65 and Older raw value"]]))
+
+# Look at the first 20 observations
+head(chrr_2024 %>%select( `5-digit FIPS Code`,`% 65 and Older raw value`),20)
+
+
+###############################
+# Create 65+ dataset
+###############################
+
+pct_65plus <- chrr_2024 %>%
+  select(County.Code = `5-digit FIPS Code`,pct_65_older = `% 65 and Older raw value`) %>%
+  mutate(County.Code = str_pad(as.character(County.Code),width = 5,side = "left",pad = "0"),
+         pct_65_older = as.numeric(str_replace(as.character(pct_65_older), "%", "")))
+
+view(pct_65plus)
+
+###############################
+# Check resulting dataset
+###############################
+
+# Variable names
+names(pct_65plus)
+
+# Number of rows and columns
+dim(pct_65plus)
+
+# First 10 counties
+head(pct_65plus, 10)
+
+# Summary of 65+ variable
+summary(pct_65plus$pct_65_older)
+
+# Number of missing values after conversion
+sum(is.na(pct_65plus$pct_65_older))
+
+# Check for duplicated County.Code
+sum(duplicated(pct_65plus$County.Code))
+
+# Check structure
+str(pct_65plus)
+
  
 
 # =============================================================================
-# SECTION 10: EXPORT
+# SECTION 11: EXPORT
 # =============================================================================
 
 
@@ -376,6 +445,7 @@ state_summary <- output |>
 write_csv(state_summary, "diagnostics_state_summary.csv")
 
 write_csv(output, "cle8_three_scores_txgaca_within_state.csv")
+
 
 
 
