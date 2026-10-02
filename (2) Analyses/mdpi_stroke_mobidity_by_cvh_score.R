@@ -100,9 +100,12 @@ choropleth <- ggplot() +
 
 # 6. Project for spatial analysis
 merged_proj <- st_transform(merged_sf, crs = 5070)
-merged_proj_CA <- st_transform(merged_sf_CA, crs = 5070)
-merged_proj_GA <- st_transform(merged_sf_GA, crs = 5070)
-merged_proj_TX <- st_transform(merged_sf_TX, crs = 5070)
+merged_proj_CA <- st_transform(merged_sf_CA, crs = 5070) %>%
+  mutate(county_int = row_number(), county_slope = county_int)
+merged_proj_GA <- st_transform(merged_sf_GA, crs = 5070) %>%
+  mutate(county_int = row_number(), county_slope = county_int)
+merged_proj_TX <- st_transform(merged_sf_TX, crs = 5070) %>%
+  mutate(county_int = row_number(), county_slope = county_int)
 
 # 7. Create spatial weights
 nb <- poly2nb(merged_proj)
@@ -465,7 +468,7 @@ mod.0.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_bym0), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "Random Effect", na.value = "grey90", 
-                        limits = c(-0.4, 0.4)) +
+                        limits = c(-1, 1)) +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
@@ -484,7 +487,7 @@ mod.0.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_bym0), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "Random Effect", na.value = "grey90", 
-                        limits = c(-0.075, 0.05)) +
+                        limits = c(-1.8, 2.4)) +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
@@ -505,7 +508,7 @@ mod.1.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_bym1), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "Random Effect", na.value = "grey90", 
-                        limits = c(-0.4, 0.4)) +
+                        limits = c(-0.5, 0.5)) +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
@@ -524,7 +527,7 @@ mod.1.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_bym1), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "Random Effect", na.value = "grey90", 
-                        limits = c(-0.075, 0.05)) +
+                        limits = c(-0.6, 1.2)) +
   annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
@@ -549,9 +552,9 @@ var(merged_proj_TX$RE_bym1) - var(merged_proj_TX$RE_bym0)
 merged_proj_CA$RE_abs_magchange <- (abs(merged_proj_CA$RE_bym1) - abs(merged_proj_CA$RE_bym0))/abs(merged_proj_CA$RE_bym0)
 merged_proj_GA$RE_abs_magchange <- (abs(merged_proj_GA$RE_bym1) - abs(merged_proj_GA$RE_bym0))/abs(merged_proj_GA$RE_bym0)
 merged_proj_TX$RE_abs_magchange <- (abs(merged_proj_TX$RE_bym1) - abs(merged_proj_TX$RE_bym0))/abs(merged_proj_TX$RE_bym0)
-summary(merged_proj_CA$RE_abs_magchange)
-summary(merged_proj_GA$RE_abs_magchange)
-summary(merged_proj_TX$RE_abs_magchange)
+summary(merged_proj_CA$RE_change)
+summary(merged_proj_TX$RE_change)
+summary(merged_proj_GA$RE_change)
 
 # merged_proj_all$RE_change <-
 # names(mod.1.CA.bym$summary.random$county_int$ID)
@@ -560,7 +563,7 @@ mod.1.CA.map <- ggplot() +
   geom_sf(data = merged_proj_CA, aes(fill = RE_change), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "%-Change in Random Effect", na.value = "grey90", 
-                        limits = c(-70, 70)) #+
+                        limits = c(-21, 12)) #+
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering())
@@ -570,7 +573,7 @@ mod.1.TX.map <- ggplot() +
   geom_sf(data = merged_proj_TX, aes(fill = RE_change), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "%-Change in Random Effect", na.value = "grey90", 
-                        limits = c(-70, 70)) #+
+                        limits = c(-65, 33)) #+
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
@@ -580,7 +583,7 @@ mod.1.GA.map <- ggplot() +
   geom_sf(data = merged_proj_GA, aes(fill = RE_change), color = "white", size = 0.1) +
  #  geom_sf(data = states_sf, fill = NA, color = "grey30", size = 0.3) +
   scale_fill_gradientn(colors = cb_palette[6:1], name = "%-Change in Random Effect", na.value = "grey90", 
-                        limits = c(-70, 70)) #+
+                        limits = c(-11, 10)) #+
   # annotation_scale(location = "bl", width_hint = 0.3) #+
   # annotation_north_arrow(location = "bl", which_north = "true",
   #                        style = north_arrow_fancy_orienteering()) 
