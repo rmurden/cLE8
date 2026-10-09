@@ -11,7 +11,7 @@ set.seed(217)
 library(tidyverse); library(sf); library(tigris); library(spdep); library(ggplot2); 
 library(ggspatial); library(readxl); library(RColorBrewer); library(classInt);
 require(INLA)
-library(gridExtra)
+library(gridExtra); library(cowplot)
 options(tigris_use_cache = TRUE)
 
 # 1. Load your dataset
@@ -199,6 +199,7 @@ mod.0.CA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_CA,
 summary(mod.0.CA.glm)
 sum(mod.0.CA.glm$cpo$cpo) 
 hist(mod.0.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.0.glm<-unlist(residuals(mod.0.CA.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.CA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_CA,
@@ -208,6 +209,7 @@ mod.1.CA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_CA,
 summary(mod.1.CA.glm)
 sum(mod.1.CA.glm$cpo$cpo) 
 hist(mod.1.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.glm<-unlist(residuals(mod.1.CA.glm))
 
 ##### GLMMs with ICAR for Stroke morbidity in CA
 ### Model 0: Intercept-only model
@@ -218,6 +220,7 @@ mod.0.CA.icar <- inla(formula.0.icar.CA, family = "gaussian", data = merged_proj
 summary(mod.0.CA.icar)
 sum(mod.0.CA.icar$cpo$cpo) 
 hist(mod.0.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.0.icar<-unlist(residuals(mod.0.CA.icar))
 
 ### Model 1: CVH score as a covariate
 mod.1.CA.icar <- inla(formula.1.icar.CA, family = "gaussian", data = merged_proj_CA,
@@ -227,6 +230,7 @@ mod.1.CA.icar <- inla(formula.1.icar.CA, family = "gaussian", data = merged_proj
 summary(mod.1.CA.icar)
 sum(mod.1.CA.icar$cpo$cpo) 
 hist(mod.1.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.icar<-unlist(residuals(mod.1.CA.icar))
 
 ##### GLMMs with Besag-York-Mollie for Stroke morbidity in CA
 ### Model 0: Intercept-only model
@@ -237,6 +241,7 @@ mod.0.CA.bym <- inla(formula.0.bym.CA, family = "gaussian", data = merged_proj_C
 summary(mod.0.CA.bym)
 sum(mod.0.CA.bym$cpo$cpo) 
 hist(mod.0.CA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.0.bym<-unlist(residuals(mod.0.CA.bym, type = "response"))
 
 ### Model 1: CVH score as a covariate
 mod.1.CA.bym <- inla(formula.1.bym.CA, family = "gaussian", data = merged_proj_CA,
@@ -246,6 +251,7 @@ mod.1.CA.bym <- inla(formula.1.bym.CA, family = "gaussian", data = merged_proj_C
 summary(mod.1.CA.bym)
 sum(mod.1.CA.bym$cpo$cpo) 
 hist(mod.1.CA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.bym<-unlist(residuals(mod.1.CA.bym, type = "response"))
 
 CA.mod.results = list("GLM 0 -CA" = mod.0.CA.glm, "GLM 1 -CA" = mod.1.CA.glm,
                      "ICAR 0 -CA" = mod.0.CA.icar, "ICAR 1 -CA" = mod.1.CA.icar,
@@ -273,6 +279,7 @@ mod.0.GA.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_GA,
 summary(mod.0.GA.glm)
 sum(mod.0.GA.glm$cpo$cpo) 
 hist(mod.0.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.glm<-unlist(residuals(mod.0.GA.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_GA,
@@ -282,6 +289,7 @@ mod.1.GA.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_GA,
 summary(mod.1.GA.glm)
 sum(mod.1.GA.glm$cpo$cpo) 
 hist(mod.1.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.1.glm<-unlist(residuals(mod.1.GA.glm))
 
 ##### GLMMs with ICAR for Stroke morbidity in GA
 ### Model 0: Intercept-only model
@@ -292,6 +300,7 @@ mod.0.GA.icar <- inla(formula.0.icar.GA, family = "gaussian", data = merged_proj
 summary(mod.0.GA.icar)
 sum(mod.0.GA.icar$cpo$cpo) 
 hist(mod.0.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.icar<-unlist(residuals(mod.0.GA.icar))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.icar <- inla(formula.1.icar.GA, family = "gaussian", data = merged_proj_GA,
@@ -301,6 +310,7 @@ mod.1.GA.icar <- inla(formula.1.icar.GA, family = "gaussian", data = merged_proj
 summary(mod.1.GA.icar)
 sum(mod.1.GA.icar$cpo$cpo) 
 hist(mod.1.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.1.icar<-unlist(residuals(mod.1.GA.icar))
 
 ##### GLMMs with Besag-York-Mollie for Stroke morbidity in GA
 ### Model 0: Intercept-only model
@@ -311,6 +321,7 @@ mod.0.GA.bym <- inla(formula.0.bym.GA, family = "gaussian", data = merged_proj_G
 summary(mod.0.GA.bym)
 sum(mod.0.GA.bym$cpo$cpo) 
 hist(mod.0.GA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.bym<-unlist(residuals(mod.0.GA.bym))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.bym <- inla(formula.1.bym.GA, family = "gaussian", data = merged_proj_GA,
@@ -320,6 +331,7 @@ mod.1.GA.bym <- inla(formula.1.bym.GA, family = "gaussian", data = merged_proj_G
 summary(mod.1.GA.bym)
 sum(mod.1.GA.bym$cpo$cpo) 
 hist(mod.1.GA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.1.bym<-unlist(residuals(mod.1.GA.bym))
 
 GA.mod.results = list("GLM 0 -GA" = mod.0.GA.glm, "GLM 1 -GA" = mod.1.GA.glm,
                      "ICAR 0 -GA" = mod.0.GA.icar, "ICAR 1 -GA" = mod.1.GA.icar,
@@ -339,6 +351,7 @@ mod.0.TX.glm <- inla(formula.0.glm, family = "gaussian", data = merged_proj_TX ,
 summary(mod.0.TX.glm)
 sum(mod.0.TX.glm$cpo$cpo) 
 hist(mod.0.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.glm<-unlist(residuals(mod.0.TX.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_TX,
@@ -348,6 +361,7 @@ mod.1.TX.glm <- inla(formula.1.glm, family = "gaussian", data = merged_proj_TX,
 summary(mod.1.TX.glm)
 sum(mod.1.TX.glm$cpo$cpo) 
 hist(mod.1.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.glm<-unlist(residuals(mod.1.TX.glm))
 
 ##### GLMMs with ICAR for Stroke morbidity in TX
 ### Model 0: Intercept-only model
@@ -358,6 +372,7 @@ mod.0.TX.icar <- inla(formula.0.icar.TX, family = "gaussian", data = merged_proj
 summary(mod.0.TX.icar)
 sum(mod.0.TX.icar$cpo$cpo) 
 hist(mod.0.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.icar<-unlist(residuals(mod.0.TX.icar))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.icar <- inla(formula.1.icar.TX, family = "gaussian", data = merged_proj_TX,
@@ -367,6 +382,7 @@ mod.1.TX.icar <- inla(formula.1.icar.TX, family = "gaussian", data = merged_proj
 summary(mod.1.TX.icar)
 sum(mod.1.TX.icar$cpo$cpo) 
 hist(mod.1.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.icar<-unlist(residuals(mod.1.TX.icar))
 
 ##### GLMMs with Besag-York-Mollie for Stroke morbidity in TX
 ### Model 0: Intercept-only model
@@ -377,6 +393,7 @@ mod.0.TX.bym <- inla(formula.0.bym.TX, family = "gaussian", data = merged_proj_T
 summary(mod.0.TX.bym)
 sum(mod.0.TX.bym$cpo$cpo) 
 hist(mod.0.TX.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.bym<-unlist(residuals(mod.0.TX.bym))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.bym <- inla(formula.1.bym.TX, family = "gaussian", data = merged_proj_TX,
@@ -386,6 +403,7 @@ mod.1.TX.bym <- inla(formula.1.bym.TX, family = "gaussian", data = merged_proj_T
 summary(mod.1.TX.bym)
 sum(mod.1.TX.bym$cpo$cpo) 
 hist(mod.1.TX.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.bym<-unlist(residuals(mod.1.TX.bym))
 
 tau.bym.0.GA <- mod.0.GA.bym$summary.hyperpar$mean[2]
 phi.bym.0.GA <- mod.0.GA.bym$summary.hyperpar$mean[3]
@@ -591,6 +609,149 @@ combined.1<-grid.arrange(mod.1.CA.map + theme(legend.title = element_text(size =
                          mod.1.GA.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),  ncol = 2) 
 
 ggsave("Output/Figures/Combined_RE_Stroke_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
+
+
+# 16. LISA analysis on residuals from BYM models
+merged_proj.resid <- merged_proj_CA |>
+  bind_rows(merged_proj_GA, merged_proj_TX)
+nb.resid <- poly2nb(merged_proj.resid)
+lw.resid <- nb2listw(nb.resid, style = "W", zero.policy = TRUE)
+
+### Calculate global moran's I per state for model outcome and model residuals
+##### CA
+moran_global_CA.outcome <- moran.test(merged_proj_CA$STROKE_AdjPrev, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.outcome)
+moran_global_CA.resid0 <- moran.test(merged_proj_CA$resid.0.bym, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.resid0)
+moran_global_CA.resid1 <- moran.test(merged_proj_CA$resid.1.bym, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.resid1)
+
+##### GA
+moran_global_GA.outcome <- moran.test(merged_proj_GA$STROKE_AdjPrev, lw_GA,
+                                       zero.policy = TRUE)
+print(moran_global_GA.outcome)
+moran_global_GA.resid0 <- moran.test(merged_proj_GA$resid.0.bym, lw_GA,
+                                     zero.policy = TRUE)
+print(moran_global_GA.resid0)
+moran_global_GA.resid1 <- moran.test(merged_proj_GA$resid.1.bym, lw_GA,
+                                     zero.policy = TRUE)
+print(moran_global_GA.resid1)
+
+##### TX
+moran_global_TX.outcome <- moran.test(merged_proj_TX$STROKE_AdjPrev, lw_TX,
+                                       zero.policy = TRUE)
+print(moran_global_TX.outcome)
+moran_global_TX.resid0 <- moran.test(merged_proj_TX$resid.0.bym, lw_TX,
+                                     zero.policy = TRUE)
+print(moran_global_TX.resid0)
+moran_global_TX.resid1 <- moran.test(merged_proj_TX$resid.1.bym, lw_TX,
+                                     zero.policy = TRUE)
+print(moran_global_TX.resid1)
+
+#### Local Moran's I
+local_moran.outcome <- localmoran(merged_proj.resid$STROKE_AdjPrev, lw.resid,
+                                   zero.policy = TRUE)
+merged_proj.resid$local_I.outcome <- local_moran.outcome[, 1]
+merged_proj.resid$p_value.outcome <- local_moran.outcome[, 5]
+merged_proj.resid$quad.outcome <- attr(local_moran.outcome, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.outcome = case_when(p_value.outcome>=0.05 ~ "None",
+                          p_value.outcome<0.05 ~ quad.outcome
+                          )
+    )
+
+local_moran.bym0 <- localmoran(merged_proj.resid$resid.0.bym, lw.resid,
+                               zero.policy = TRUE)
+merged_proj.resid$local_I.bym0 <- local_moran.bym0[, 1]
+merged_proj.resid$p_value.bym0 <- local_moran.bym0[, 5]
+merged_proj.resid$quad.bym0 <- attr(local_moran.bym0, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.bym0 = case_when(p_value.bym0>=0.05 ~ "None",
+                          p_value.bym0<0.05 ~ quad.bym0
+    )
+  )
+
+local_moran.bym1 <- localmoran(merged_proj.resid$resid.1.bym, lw.resid,
+                               zero.policy = TRUE)
+merged_proj.resid$local_I.bym1 <- local_moran.bym1[, 1]
+merged_proj.resid$p_value.bym1 <- local_moran.bym1[, 5]
+merged_proj.resid$quad.bym1 <- attr(local_moran.bym1, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.bym1 = case_when(p_value.bym1>=0.05 ~ "None",
+                          p_value.bym1<0.05 ~ quad.bym1
+    )
+  )
+
+# 11. Map of Local Moran's I (hotspots)
+white_bg <- theme(plot.background = element_rect(fill = "white", colour = NA),
+                  panel.background = element_rect(fill = "white", colour = NA),
+                  legend.background = element_rect(fill = "white", colour = NA),
+                  legend.box.background = element_rect(fill = "white", colour = NA))
+
+outcome.map <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = STROKE_AdjPrev)) +
+  scale_fill_viridis_c(name = "Age-Adjusted Prevalence") +
+  labs(title = "Stroke Prevalence") +
+  theme_minimal()
+
+hotspot_map.outcome <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.outcome)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                  "Low-High" = "green", "High-Low" = "orange",
+                                  "High-High" = "red")) +
+  labs(title = "Stroke Prevalence - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid.0 <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.bym0)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                 "Low-High" = "green", "High-Low" = "orange",
+                                 "High-High" = "red")) +
+  labs(title = "Model 0 Residuals - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid.1 <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.bym1)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                  "Low-High" = "green", "High-Low" = "orange",
+                                  "High-High" = "red")) +
+  labs(title = "Model 1 Residuals - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid <- plot_grid(plot_grid(outcome.map +
+                                           theme(legend.position = "bottom"),
+                               hotspot_map.outcome +
+                                 theme(legend.position = "none"), 
+                               hotspot_map.resid.0 +
+                                 theme(legend.position = "none"),  
+                               hotspot_map.resid.1 +
+                                 theme(legend.position = "none"), nrow = 2),
+                               get_legend(hotspot_map.resid.1 +
+                                            theme(legend.position = "bottom", 
+                                                  text = element_text(size = 10))),
+                               nrow = 2, rel_heights = c(6,1)) |>
+  ggdraw() + white_bg
+
+ggsave("Output/Figures/Stroke_Local_Morans_I_Hotspots.png",
+       plot = hotspot_map.resid, bg = "white",
+       width = 11, height = 8.5, units = "in",
+       dpi = 300)
 
 
 # ################          AllCause Mortality - Model 0          ################

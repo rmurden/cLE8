@@ -10,7 +10,7 @@ set.seed(217)
 # Load required packages
 library(tidyverse); library(sf); library(tigris); library(spdep); library(ggplot2); 
 library(ggspatial); library(readxl); library(RColorBrewer); library(classInt);
-require(INLA)
+require(INLA); library(cowplot)
 library(gridExtra)
 options(tigris_use_cache = TRUE)
 
@@ -184,6 +184,7 @@ g_GA <- inla.read.graph("Data/map_GA.adj")
 nb2INLA("Data/map_TX.adj", nb_TX)
 g_TX <- inla.read.graph("Data/map_TX.adj")
 
+# 12. Models for All-cause mortality by CVH score
 ################          Models          ################
 ## Same GLM formula for all states
 formula.0.glm <- Deaths ~ 1 + scale(pct_65_older)
@@ -217,6 +218,7 @@ mod.0.CA.glm <- inla(formula.0.glm, family = "nbinomial", data = merged_proj_CA,
 summary(mod.0.CA.glm)
 sum(mod.0.CA.glm$cpo$cpo) 
 hist(mod.0.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.0.glm<-unlist(residuals(mod.0.CA.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.CA.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_CA, E = ExpectedDeaths,
@@ -226,6 +228,7 @@ mod.1.CA.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_CA,
 summary(mod.1.CA.glm)
 sum(mod.1.CA.glm$cpo$cpo) 
 hist(mod.1.CA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.glm<-unlist(residuals(mod.1.CA.glm))
 
 ##### GLMMs with ICAR for  mortality in CA
 ### Model 0: Intercept-only model
@@ -236,7 +239,7 @@ mod.0.CA.icar <- inla(formula.0.icar.CA, family = "poisson", data = merged_proj_
 summary(mod.0.CA.icar)
 sum(mod.0.CA.icar$cpo$cpo) 
 hist(mod.0.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
-
+merged_proj_CA$resid.0.icar<-unlist(residuals(mod.0.CA.icar))
 ### Model 1: CVH score as a covariate
 mod.1.CA.icar <- inla(formula.1.icar.CA, family = "poisson", data = merged_proj_CA, E = ExpectedDeaths,
                   control.predictor = list(compute = TRUE),
@@ -245,6 +248,7 @@ mod.1.CA.icar <- inla(formula.1.icar.CA, family = "poisson", data = merged_proj_
 summary(mod.1.CA.icar)
 sum(mod.1.CA.icar$cpo$cpo) 
 hist(mod.1.CA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.icar<-unlist(residuals(mod.1.CA.icar))
 
 ##### GLMMs with Besag-York-Mollie for  mortality in CA
 ### Model 0: Intercept-only model
@@ -255,6 +259,7 @@ mod.0.CA.bym <- inla(formula.0.bym.CA, family = "poisson", data = merged_proj_CA
 summary(mod.0.CA.bym)
 sum(mod.0.CA.bym$cpo$cpo) 
 hist(mod.0.CA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.0.bym<-unlist(residuals(mod.0.CA.bym, type = "response"))
 
 ### Model 1: CVH score as a covariate
 mod.1.CA.bym <- inla(formula.1.bym.CA, family = "poisson", data = merged_proj_CA, E = ExpectedDeaths,
@@ -264,6 +269,7 @@ mod.1.CA.bym <- inla(formula.1.bym.CA, family = "poisson", data = merged_proj_CA
 summary(mod.1.CA.bym)
 sum(mod.1.CA.bym$cpo$cpo) 
 hist(mod.1.CA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_CA$resid.1.bym<-unlist(residuals(mod.1.CA.bym, type = "response"))
 
 CA.mod.results = list("GLM 0 -CA" = mod.0.CA.glm, "GLM 1 -CA" = mod.1.CA.glm,
                      "ICAR 0 -CA" = mod.0.CA.icar, "ICAR 1 -CA" = mod.1.CA.icar,
@@ -291,6 +297,7 @@ mod.0.GA.glm <- inla(formula.0.glm, family = "nbinomial", data = merged_proj_GA,
 summary(mod.0.GA.glm)
 sum(mod.0.GA.glm$cpo$cpo) 
 hist(mod.0.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.glm<-unlist(residuals(mod.0.GA.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_GA, E = ExpectedDeaths,
@@ -300,6 +307,7 @@ mod.1.GA.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_GA,
 summary(mod.1.GA.glm)
 sum(mod.1.GA.glm$cpo$cpo) 
 hist(mod.1.GA.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.1.glm<-unlist(residuals(mod.1.GA.glm))
 
 ##### GLMMs with ICAR for All-cause mortality in GA
 ### Model 0: Intercept-only model
@@ -310,6 +318,7 @@ mod.0.GA.icar <- inla(formula.0.icar.GA, family = "poisson", data = merged_proj_
 summary(mod.0.GA.icar)
 sum(mod.0.GA.icar$cpo$cpo) 
 hist(mod.0.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.icar<-unlist(residuals(mod.0.GA.icar))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.icar <- inla(formula.1.icar.GA, family = "poisson", data = merged_proj_GA, E = ExpectedDeaths,
@@ -319,6 +328,7 @@ mod.1.GA.icar <- inla(formula.1.icar.GA, family = "poisson", data = merged_proj_
 summary(mod.1.GA.icar)
 sum(mod.1.GA.icar$cpo$cpo) 
 hist(mod.1.GA.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.1.icar<-unlist(residuals(mod.1.GA.icar))
 
 ##### GLMMs with Besag-York-Mollie for All-cause mortality in GA
 ### Model 0: Intercept-only model
@@ -329,6 +339,7 @@ mod.0.GA.bym <- inla(formula.0.bym.GA, family = "poisson", data = merged_proj_GA
 summary(mod.0.GA.bym)
 sum(mod.0.GA.bym$cpo$cpo) 
 hist(mod.0.GA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_GA$resid.0.bym<-unlist(residuals(mod.0.GA.bym))
 
 ### Model 1: CVH score as a covariate
 mod.1.GA.bym <- inla(formula.1.bym.GA, family = "poisson", data = merged_proj_GA, E = ExpectedDeaths,
@@ -338,7 +349,8 @@ mod.1.GA.bym <- inla(formula.1.bym.GA, family = "poisson", data = merged_proj_GA
 summary(mod.1.GA.bym)
 sum(mod.1.GA.bym$cpo$cpo) 
 hist(mod.1.GA.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
-
+merged_proj_GA$resid.1.bym<-unlist(residuals(mod.1.GA.bym))
+  
 GA.mod.results = list("GLM 0 -GA" = mod.0.GA.glm, "GLM 1 -GA" = mod.1.GA.glm,
                      "ICAR 0 -GA" = mod.0.GA.icar, "ICAR 1 -GA" = mod.1.GA.icar,
                      "BYM 0 -GA" = mod.0.GA.bym, "BYM 1 -GA" = mod.1.GA.bym)
@@ -357,6 +369,7 @@ mod.0.TX.glm <- inla(formula.0.glm, family = "nbinomial", data = merged_proj_TX 
 summary(mod.0.TX.glm)
 sum(mod.0.TX.glm$cpo$cpo) 
 hist(mod.0.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.glm<-unlist(residuals(mod.0.TX.glm))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_TX, E = ExpectedDeaths,
@@ -366,6 +379,7 @@ mod.1.TX.glm <- inla(formula.1.glm, family = "nbinomial", data = merged_proj_TX,
 summary(mod.1.TX.glm)
 sum(mod.1.TX.glm$cpo$cpo) 
 hist(mod.1.TX.glm$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.glm<-unlist(residuals(mod.1.TX.glm))
 
 ##### GLMMs with ICAR for All-cause mortality in TX
 ### Model 0: Intercept-only model
@@ -376,6 +390,7 @@ mod.0.TX.icar <- inla(formula.0.icar.TX, family = "poisson", data = merged_proj_
 summary(mod.0.TX.icar)
 sum(mod.0.TX.icar$cpo$cpo) 
 hist(mod.0.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.icar<-unlist(residuals(mod.0.TX.icar))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.icar <- inla(formula.1.icar.TX, family = "poisson", data = merged_proj_TX, E = ExpectedDeaths,
@@ -385,6 +400,7 @@ mod.1.TX.icar <- inla(formula.1.icar.TX, family = "poisson", data = merged_proj_
 summary(mod.1.TX.icar)
 sum(mod.1.TX.icar$cpo$cpo) 
 hist(mod.1.TX.icar$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.icar<-unlist(residuals(mod.1.TX.icar))
 
 ##### GLMMs with Besag-York-Mollie for All-cause mortality in TX
 ### Model 0: Intercept-only model
@@ -395,6 +411,7 @@ mod.0.TX.bym <- inla(formula.0.bym.TX, family = "poisson", data = merged_proj_TX
 summary(mod.0.TX.bym)
 sum(mod.0.TX.bym$cpo$cpo) 
 hist(mod.0.TX.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.0.bym<-unlist(residuals(mod.0.TX.bym))
 
 ### Model 1: CVH score as a covariate
 mod.1.TX.bym <- inla(formula.1.bym.TX, family = "poisson", data = merged_proj_TX, E = ExpectedDeaths,
@@ -404,6 +421,29 @@ mod.1.TX.bym <- inla(formula.1.bym.TX, family = "poisson", data = merged_proj_TX
 summary(mod.1.TX.bym)
 sum(mod.1.TX.bym$cpo$cpo) 
 hist(mod.1.TX.bym$cpo$pit) # data do not fit well (https://faculty.washington.edu/jonno/SISMIDmaterial/3-spatial1.pdf)
+merged_proj_TX$resid.1.bym<-unlist(residuals(mod.1.TX.bym))
+
+TX.mod.results = list("GLM 0 -TX" = mod.0.TX.glm, "GLM 1 -TX" = mod.1.TX.glm,
+                     "ICAR 0 -TX" = mod.0.TX.icar, "ICAR 1 -TX" = mod.1.TX.icar,
+                     "BYM 0 -TX" = mod.0.TX.bym, "BYM 1 -TX" = mod.1.TX.bym)
+
+TX.out = t(sapply(TX.mod.results, extract.model.results))
+TX.out
+
+TX.fixed = do.call(rbind, lapply(TX.mod.results, extract.fixed.effects))
+
+# 13. Save model fit assessment results and fixed effects to CSV files
+write.csv(rbind(CA.out %>% as.data.frame() %>% arrange(DIC),
+                GA.out %>% as.data.frame() %>% arrange(DIC),
+                TX.out %>% as.data.frame() %>% arrange(DIC)),
+          "Output/Results/AllCause_Mortality_NB-model_results.csv",
+          row.names = TRUE)
+
+write.csv(round(rbind(CA.fixed, GA.fixed, TX.fixed),5),
+          "Output/Results/AllCause_Mortality_NB-model_fixed_effects.csv",
+          row.names = TRUE)
+
+# 14. Extract variance components from BYM models
 tau.bym.0.GA <- mod.0.GA.bym$summary.hyperpar$mean[1]
 phi.bym.0.GA <- mod.0.GA.bym$summary.hyperpar$mean[2]
 tau.bym.1.GA <- mod.1.GA.bym$summary.hyperpar$mean[1]
@@ -449,42 +489,7 @@ Var.res <- cbind("Tau (M0)" = tau.m0,
 rownames(Var.res) <- c("CA", "GA", "TX" )
 write.csv(Var.res, "Output/Results/AllCause_Mortality_variance_components.csv", row.names = TRUE)
 
-TX.mod.results = list("GLM 0 -TX" = mod.0.TX.glm, "GLM 1 -TX" = mod.1.TX.glm,
-                     "ICAR 0 -TX" = mod.0.TX.icar, "ICAR 1 -TX" = mod.1.TX.icar,
-                     "BYM 0 -TX" = mod.0.TX.bym, "BYM 1 -TX" = mod.1.TX.bym)
-
-TX.out = t(sapply(TX.mod.results, extract.model.results))
-TX.out
-
-TX.fixed = do.call(rbind, lapply(TX.mod.results, extract.fixed.effects))
-
-write.csv(rbind(CA.out %>% as.data.frame() %>% arrange(DIC),
-                GA.out %>% as.data.frame() %>% arrange(DIC),
-                TX.out %>% as.data.frame() %>% arrange(DIC)),
-          "Output/Results/AllCause_Mortality_NB-model_results.csv",
-          row.names = TRUE)
-
-write.csv(round(rbind(CA.fixed, GA.fixed, TX.fixed),5),
-          "Output/Results/AllCause_Mortality_NB-model_fixed_effects.csv",
-          row.names = TRUE)
-
-
-merged_proj_CA$RE_bym0 <- mod.0.CA.bym$summary.random$county_int$mean[1:58]
-merged_proj_GA$RE_bym0 <- mod.0.GA.bym$summary.random$county_int$mean[1:159]
-merged_proj_TX$RE_bym0 <- mod.0.TX.bym$summary.random$county_int$mean[1:251]
-merged_proj_CA$RE_bym1 <- mod.1.CA.bym$summary.random$county_int$mean[1:58]
-merged_proj_GA$RE_bym1 <- mod.1.GA.bym$summary.random$county_int$mean[1:159]
-merged_proj_TX$RE_bym1 <- mod.1.TX.bym$summary.random$county_int$mean[1:251]
-
-mod.1.CA.bym$summary.hyperpar
-
-(var(merged_proj_CA$RE_bym1) - var(merged_proj_CA$RE_bym0))/var(merged_proj_CA$RE_bym0)
-# = -0.1345998
-(var(merged_proj_GA$RE_bym1) - var(merged_proj_GA$RE_bym0))/var(merged_proj_GA$RE_bym0)
-# = -0.4458711
-(var(merged_proj_TX$RE_bym1) - var(merged_proj_TX$RE_bym0))/var(merged_proj_TX$RE_bym0)
-# = 0.05285844
-
+# 15. Maps of Random Effects
 ##################      Maps of Random Effects      ##################
 #####   NULL Models    #####
 merged_proj_CA$RE_bym0 <- mod.0.CA.bym$summary.random$county_int$mean[1:58]
@@ -625,6 +630,147 @@ combined.1<-grid.arrange(mod.1.CA.map + theme(legend.title = element_text(size =
 
 ggsave("Output/Figures/Combined_RE_AllCauseMort_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
 
+# 16. LISA analysis on residuals from BYM models
+merged_proj.resid <- merged_proj_CA |>
+  bind_rows(merged_proj_GA, merged_proj_TX)
+nb.resid <- poly2nb(merged_proj.resid)
+lw.resid <- nb2listw(nb.resid, style = "W", zero.policy = TRUE)
+
+### Calculate global moran's I per state for model outcome and model residuals
+##### CA
+moran_global_CA.allcause <- moran.test(merged_proj_CA$AllCause_mortality, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.allcause)
+moran_global_CA.resid0 <- moran.test(merged_proj_CA$resid.0.bym, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.resid0)
+moran_global_CA.resid1 <- moran.test(merged_proj_CA$resid.1.bym, lw_CA,
+                                       zero.policy = TRUE)
+print(moran_global_CA.resid1)
+
+##### GA
+moran_global_GA.allcause <- moran.test(merged_proj_GA$AllCause_mortality, lw_GA,
+                                       zero.policy = TRUE)
+print(moran_global_GA.allcause)
+moran_global_GA.resid0 <- moran.test(merged_proj_GA$resid.0.bym, lw_GA,
+                                     zero.policy = TRUE)
+print(moran_global_GA.resid0)
+moran_global_GA.resid1 <- moran.test(merged_proj_GA$resid.1.bym, lw_GA,
+                                     zero.policy = TRUE)
+print(moran_global_GA.resid1)
+
+##### TX
+moran_global_TX.allcause <- moran.test(merged_proj_TX$AllCause_mortality, lw_TX,
+                                       zero.policy = TRUE)
+print(moran_global_TX.allcause)
+moran_global_TX.resid0 <- moran.test(merged_proj_TX$resid.0.bym, lw_TX,
+                                     zero.policy = TRUE)
+print(moran_global_TX.resid0)
+moran_global_TX.resid1 <- moran.test(merged_proj_TX$resid.1.bym, lw_TX,
+                                     zero.policy = TRUE)
+print(moran_global_TX.resid1)
+
+#### Local Moran's I
+local_moran.allcause <- localmoran(merged_proj.resid$AllCause_mortality, lw.resid,
+                                   zero.policy = TRUE)
+merged_proj.resid$local_I.allcause <- local_moran.allcause[, 1]
+merged_proj.resid$p_value.allcause <- local_moran.allcause[, 5]
+merged_proj.resid$quad.allcause <- attr(local_moran.allcause, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.allcause = case_when(p_value.allcause>=0.05 ~ "None",
+                          p_value.allcause<0.05 ~ quad.allcause
+                          )
+    )
+
+local_moran.bym0 <- localmoran(merged_proj.resid$resid.0.bym, lw.resid,
+                               zero.policy = TRUE)
+merged_proj.resid$local_I.bym0 <- local_moran.bym0[, 1]
+merged_proj.resid$p_value.bym0 <- local_moran.bym0[, 5]
+merged_proj.resid$quad.bym0 <- attr(local_moran.bym0, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.bym0 = case_when(p_value.bym0>=0.05 ~ "None",
+                          p_value.bym0<0.05 ~ quad.bym0
+    )
+  )
+
+local_moran.bym1 <- localmoran(merged_proj.resid$resid.1.bym, lw.resid,
+                               zero.policy = TRUE)
+merged_proj.resid$local_I.bym1 <- local_moran.bym1[, 1]
+merged_proj.resid$p_value.bym1 <- local_moran.bym1[, 5]
+merged_proj.resid$quad.bym1 <- attr(local_moran.bym1, "quadr")[['mean']]
+merged_proj.resid <- merged_proj.resid |>
+  mutate(
+    hotspot.bym1 = case_when(p_value.bym1>=0.05 ~ "None",
+                          p_value.bym1<0.05 ~ quad.bym1
+    )
+  )
+
+# 11. Map of Local Moran's I (hotspots)
+white_bg <- theme(plot.background = element_rect(fill = "white", colour = NA),
+                  panel.background = element_rect(fill = "white", colour = NA),
+                  legend.background = element_rect(fill = "white", colour = NA),
+                  legend.box.background = element_rect(fill = "white", colour = NA))
+
+outcome.map <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = AllCause_mortality)) +
+  scale_fill_viridis_c(name = "Crude Rate per 100,000") +
+  labs(title = "All Cause Mortality") +
+  theme_minimal()
+
+hotspot_map.outcome <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.allcause)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                  "Low-High" = "green", "High-Low" = "orange",
+                                  "High-High" = "red")) +
+  labs(title = "All Cause Mortality - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid.0 <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.bym0)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                 "Low-High" = "green", "High-Low" = "orange",
+                                 "High-High" = "red")) +
+  labs(title = "Model 0 Residuals - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid.1 <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.bym1)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                  "Low-High" = "green", "High-Low" = "orange",
+                                  "High-High" = "red")) +
+  labs(title = "Model 1 Residuals - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.resid <- plot_grid(plot_grid(outcome.map +
+                                           theme(legend.position = "bottom"),
+                               hotspot_map.outcome +
+                                 theme(legend.position = "none"), 
+                               hotspot_map.resid.0 +
+                                 theme(legend.position = "none"),  
+                               hotspot_map.resid.1 +
+                                 theme(legend.position = "none"), nrow = 2),
+                               get_legend(hotspot_map.resid.1 +
+                                            theme(legend.position = "bottom", 
+                                                  text = element_text(size = 10))),
+                               nrow = 2, rel_heights = c(6,1)) |>
+  ggdraw() + white_bg
+
+ggsave("Output/Figures/AllCause_Local_Morans_I_Hotspots.png",
+       plot = hotspot_map.resid, bg = "white",
+       width = 11, height = 8.5, units = "in",
+       dpi = 300)
 
 
 # ################          AllCause Mortality - Model 0          ################
