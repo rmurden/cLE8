@@ -797,8 +797,8 @@ state.panels <- list()
 for (st in c("CA", "GA", "TX")) {
   state.panels <- c(state.panels, list(
     resid_map_state(st, "resid.0.bym", "Model 0"),
-    hotspot_map_state(st, "hotspot.resid.bym0", "Model 0", moran.resid[[st]]$m0),
     resid_map_state(st, "resid.1.bym", "Model 1"),
+    hotspot_map_state(st, "hotspot.resid.bym0", "Model 0", moran.resid[[st]]$m0),
     hotspot_map_state(st, "hotspot.resid.bym1", "Model 1", moran.resid[[st]]$m1)))
 }
 
