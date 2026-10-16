@@ -10,8 +10,7 @@ set.seed(217)
 # Load required packages
 library(tidyverse); library(sf); library(tigris); library(spdep); library(ggplot2); 
 library(ggspatial); library(readxl); library(RColorBrewer); library(classInt);
-require(INLA); library(cowplot)
-library(gridExtra)
+require(INLA); library(cowplot); library(gridExtra); library(dplyr)
 options(tigris_use_cache = TRUE)
 
 # 1. Load your dataset
@@ -25,13 +24,13 @@ data.1$GEOID <- sprintf("%05d", as.numeric(data.1$CountyFIPS))
 chrr_2024 <- read_xlsx("Data/analytic_data2024.xlsx")
 
 pct_65plus <- chrr_2024 %>%
-  select(County.Code = `5-digit FIPS Code`,pct_65_older = `% 65 and Older raw value`) %>%
+  dplyr::select(County.Code = `5-digit FIPS Code`,pct_65_older = `% 65 and Older raw value`) %>%
   mutate(County.Code = as.numeric(County.Code),
          pct_65_older = as.numeric(str_replace(as.character(pct_65_older), "%", "")))
 
 ## Merge with outcome data
 outcome.dat.all.cause <- read.csv("Data/all_cause_mortality_2021-2023.csv") %>%
-  select(County.Code, Crude.Rate, Deaths, Population) %>%
+  dplyr::select(County.Code, Crude.Rate, Deaths, Population) %>%
   rename(c("County.Code" = "County.Code", "AllCause_mortality" = "Crude.Rate")) %>%
   transform(AllCause_mortality = as.numeric(AllCause_mortality), Deaths = as.numeric(Deaths), Population = as.numeric(Population))
 
@@ -59,19 +58,19 @@ data_TX <- data %>% filter(StateAbbr == "TX") %>%
 # 2. Load and transform shapefiles
 counties_sf <- counties(state = c("CA", "GA", "TX"), cb = TRUE, resolution = "5m", year = 2022) %>%
   mutate(GEOID = as.character(GEOID)) %>%
-  select(GEOID, geometry)
+  dplyr::select(GEOID, geometry)
 
 counties_sf_CA <- counties(state = c("CA"), cb = TRUE, resolution = "5m", year = 2022) %>%
   mutate(GEOID = as.character(GEOID)) %>%
-  select(GEOID, geometry)
+  dplyr::select(GEOID, geometry)
 
 counties_sf_GA <- counties(state = c("GA"), cb = TRUE, resolution = "5m", year = 2022) %>%
   mutate(GEOID = as.character(GEOID)) %>%
-  select(GEOID, geometry)
+  dplyr::select(GEOID, geometry)
 
 counties_sf_TX <- counties(state = c("TX"), cb = TRUE, resolution = "5m", year = 2022) %>%
   mutate(GEOID = as.character(GEOID)) %>%
-  select(GEOID, geometry)
+  dplyr::select(GEOID, geometry)
 
 # 3. Merge data with counties
 merged_sf <- counties_sf %>%
@@ -436,15 +435,15 @@ TX.out
 TX.fixed = do.call(rbind, lapply(TX.mod.results, extract.fixed.effects))
 
 # 13. Save model fit assessment results and fixed effects to CSV files
-write.csv(rbind(CA.out %>% as.data.frame() %>% arrange(DIC),
-                GA.out %>% as.data.frame() %>% arrange(DIC),
-                TX.out %>% as.data.frame() %>% arrange(DIC)),
-          "Output/Results/AllCause_Mortality_NB-model_results.csv",
-          row.names = TRUE)
-
-write.csv(round(rbind(CA.fixed, GA.fixed, TX.fixed),5),
-          "Output/Results/AllCause_Mortality_NB-model_fixed_effects.csv",
-          row.names = TRUE)
+# write.csv(rbind(CA.out %>% as.data.frame() %>% arrange(DIC),
+#                 GA.out %>% as.data.frame() %>% arrange(DIC),
+#                 TX.out %>% as.data.frame() %>% arrange(DIC)),
+#           "Output/Results/AllCause_Mortality_NB-model_results.csv",
+#           row.names = TRUE)
+# 
+# write.csv(round(rbind(CA.fixed, GA.fixed, TX.fixed),5),
+#           "Output/Results/AllCause_Mortality_NB-model_fixed_effects.csv",
+#           row.names = TRUE)
 
 # 14. Extract variance components from BYM models
 tau.bym.0.GA <- mod.0.GA.bym$summary.hyperpar$mean[1]
@@ -490,7 +489,7 @@ Var.res <- cbind("Tau (M0)" = tau.m0,
                   "%-Change in Spatial Var" =  spat.var.change
                  )
 rownames(Var.res) <- c("CA", "GA", "TX" )
-write.csv(Var.res, "Output/Results/AllCause_Mortality_variance_components.csv", row.names = TRUE)
+# write.csv(Var.res, "Output/Results/AllCause_Mortality_variance_components.csv", row.names = TRUE)
 
 # 15. Maps of Random Effects
 ##################      Maps of Random Effects      ##################
@@ -534,7 +533,7 @@ mod.0.GA.map <- ggplot() +
 # ggsave("Output/Figures/GA_BYM_AllCauseMort_0.jpeg", plot = mod.0.GA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 combined.0 <- grid.arrange(mod.0.CA.map, mod.0.TX.map, mod.0.GA.map,  ncol = 2) 
-ggsave("Output/Figures/Combined_BYM_AllCauseMort_0.jpeg", plot = combined.0, width = 6.67, height = 5, units = "in", dpi = 300)
+# ggsave("Output/Figures/Combined_BYM_AllCauseMort_0.jpeg", plot = combined.0, width = 6.67, height = 5, units = "in", dpi = 300)
 
 #####   CVH Models    #####
 merged_proj_CA$RE_bym1 <- mod.1.CA.bym$summary.random$county_int$mean[1:58]
@@ -572,7 +571,7 @@ mod.1.GA.map <- ggplot() +
 # ggsave("Output/Figures/GA_BYM_AllCauseMort_1.jpeg", plot = mod.1.GA.map, width = 4, height = 5, units = "in", dpi = 300)
 
 combined.1<-grid.arrange(mod.1.CA.map, mod.1.TX.map, mod.1.GA.map,  ncol = 2) 
-ggsave("Output/Figures/Combined_BYM_AllCauseMort_1.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
+# ggsave("Output/Figures/Combined_BYM_AllCauseMort_1.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
 
 #####   Change from null to CVH models    #####
 merged_proj_CA$RE_change <- (merged_proj_CA$RE_bym1 - merged_proj_CA$RE_bym0)/abs(merged_proj_CA$RE_bym0)
@@ -628,84 +627,120 @@ combined.1<-grid.arrange(mod.1.CA.map + theme(legend.title = element_text(size =
                          mod.1.TX.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),
                          mod.1.GA.map + theme(legend.title = element_text(size = 8), axis.text = element_text(size = 8, angle = 45)),  ncol = 2) 
 
-ggsave("Output/Figures/Combined_RE_AllCauseMort_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
+# ggsave("Output/Figures/Combined_RE_AllCauseMort_Change_Maps.jpeg", plot = combined.1, width = 6.67, height = 5, units = "in", dpi = 300)
 
 # 16. LISA analysis on residuals from BYM models
 merged_proj.resid <- merged_proj_CA |>
   bind_rows(merged_proj_GA, merged_proj_TX)
-nb.resid <- poly2nb(merged_proj.resid)
-lw.resid <- nb2listw(nb.resid, style = "W", zero.policy = TRUE)
 
 ### Calculate global moran's I per state for model outcome and model residuals
+###   and random effets
 ##### CA
+##Outcome
 moran_global_CA.allcause <- moran.test(merged_proj_CA$AllCause_mortality, lw_CA,
                                        zero.policy = TRUE)
 print(moran_global_CA.allcause)
+
+## Model 0 residuals
 moran_global_CA.resid0 <- moran.test(merged_proj_CA$resid.0.bym, lw_CA,
                                        zero.policy = TRUE)
 print(moran_global_CA.resid0)
+
+## Model 1 residuals
 moran_global_CA.resid1 <- moran.test(merged_proj_CA$resid.1.bym, lw_CA,
                                        zero.policy = TRUE)
 print(moran_global_CA.resid1)
 
+## Model 0 random effects
+moran_global_CA.RE0 <- moran.test(merged_proj_CA$RE_bym0, lw_CA,
+                                     zero.policy = TRUE)
+print(moran_global_CA.RE0)
+
+## Model 1 random effects
+moran_global_CA.RE1 <- moran.test(merged_proj_CA$RE_bym1, lw_CA,
+                                     zero.policy = TRUE)
+print(moran_global_CA.RE1)
+
 ##### GA
+##Outcome
 moran_global_GA.allcause <- moran.test(merged_proj_GA$AllCause_mortality, lw_GA,
                                        zero.policy = TRUE)
 print(moran_global_GA.allcause)
+
+## Model 0 residuals
 moran_global_GA.resid0 <- moran.test(merged_proj_GA$resid.0.bym, lw_GA,
                                      zero.policy = TRUE)
 print(moran_global_GA.resid0)
+
+## Model 1 residuals
 moran_global_GA.resid1 <- moran.test(merged_proj_GA$resid.1.bym, lw_GA,
                                      zero.policy = TRUE)
 print(moran_global_GA.resid1)
 
+## Model 0 random effects
+moran_global_GA.RE0 <- moran.test(merged_proj_GA$RE_bym0, lw_GA,
+                                  zero.policy = TRUE)
+print(moran_global_GA.RE0)
+
+## Model 1 random effects
+moran_global_GA.RE1 <- moran.test(merged_proj_GA$RE_bym1, lw_GA,
+                                  zero.policy = TRUE)
+print(moran_global_GA.RE1)
+
 ##### TX
+##Outcome
 moran_global_TX.allcause <- moran.test(merged_proj_TX$AllCause_mortality, lw_TX,
                                        zero.policy = TRUE)
 print(moran_global_TX.allcause)
+
+## Model 0 residuals
 moran_global_TX.resid0 <- moran.test(merged_proj_TX$resid.0.bym, lw_TX,
                                      zero.policy = TRUE)
 print(moran_global_TX.resid0)
+
+## Model 1 residuals
 moran_global_TX.resid1 <- moran.test(merged_proj_TX$resid.1.bym, lw_TX,
                                      zero.policy = TRUE)
 print(moran_global_TX.resid1)
 
-#### Local Moran's I
-local_moran.allcause <- localmoran(merged_proj.resid$AllCause_mortality, lw.resid,
-                                   zero.policy = TRUE)
-merged_proj.resid$local_I.allcause <- local_moran.allcause[, 1]
-merged_proj.resid$p_value.allcause <- local_moran.allcause[, 5]
-merged_proj.resid$quad.allcause <- attr(local_moran.allcause, "quadr")[['mean']]
-merged_proj.resid <- merged_proj.resid |>
-  mutate(
-    hotspot.allcause = case_when(p_value.allcause>=0.05 ~ "None",
-                          p_value.allcause<0.05 ~ quad.allcause
-                          )
-    )
+## Model 0 random effects
+moran_global_TX.RE0 <- moran.test(merged_proj_TX$RE_bym0, lw_TX,
+                                  zero.policy = TRUE)
+print(moran_global_TX.RE0)
 
-local_moran.bym0 <- localmoran(merged_proj.resid$resid.0.bym, lw.resid,
-                               zero.policy = TRUE)
-merged_proj.resid$local_I.bym0 <- local_moran.bym0[, 1]
-merged_proj.resid$p_value.bym0 <- local_moran.bym0[, 5]
-merged_proj.resid$quad.bym0 <- attr(local_moran.bym0, "quadr")[['mean']]
-merged_proj.resid <- merged_proj.resid |>
-  mutate(
-    hotspot.bym0 = case_when(p_value.bym0>=0.05 ~ "None",
-                          p_value.bym0<0.05 ~ quad.bym0
-    )
-  )
+## Model 1 random effects
+moran_global_TX.RE1 <- moran.test(merged_proj_TX$RE_bym1, lw_TX,
+                                  zero.policy = TRUE)
+print(moran_global_TX.RE1)
 
-local_moran.bym1 <- localmoran(merged_proj.resid$resid.1.bym, lw.resid,
-                               zero.policy = TRUE)
-merged_proj.resid$local_I.bym1 <- local_moran.bym1[, 1]
-merged_proj.resid$p_value.bym1 <- local_moran.bym1[, 5]
-merged_proj.resid$quad.bym1 <- attr(local_moran.bym1, "quadr")[['mean']]
+#### Local Moran's I (state-specific: each state uses its own weights and mean)
+# Rows of merged_proj.resid are CA, GA, TX in the same order as merged_proj_CA/GA/TX,
+# so each state's rows line up with that state's spatial weights.
+state_weights <- list(CA = lw_CA, GA = lw_GA, TX = lw_TX)
+
+add_state_lisa <- function(dat, var, suffix) {
+  I <- p <- rep(NA_real_, nrow(dat))
+  quad <- rep(NA_character_, nrow(dat))
+  for (st in names(state_weights)) {
+    idx <- dat$StateAbbr == st
+    lm.st <- localmoran(dat[[var]][idx], state_weights[[st]], zero.policy = TRUE)
+    I[idx] <- lm.st[, 1]
+    p[idx] <- lm.st[, 5]
+    quad[idx] <- as.character(attr(lm.st, "quadr")[["mean"]])
+  }
+  dat[[paste0("local_I.", suffix)]] <- I
+  dat[[paste0("p_value.", suffix)]] <- p
+  dat[[paste0("quad.", suffix)]] <- quad
+  dat[[paste0("hotspot.", suffix)]] <- ifelse(p >= 0.05, "None", quad)
+  dat
+}
+
 merged_proj.resid <- merged_proj.resid |>
-  mutate(
-    hotspot.bym1 = case_when(p_value.bym1>=0.05 ~ "None",
-                          p_value.bym1<0.05 ~ quad.bym1
-    )
-  )
+  add_state_lisa("AllCause_mortality", "allcause") |>
+  add_state_lisa("resid.0.bym", "resid.bym0") |>
+  add_state_lisa("resid.1.bym", "resid.bym1") |>
+  add_state_lisa("RE_bym0", "RE.bym0") |>
+  add_state_lisa("RE_bym1", "RE.bym1")
 
 # 11. Map of Local Moran's I (hotspots)
 white_bg <- theme(plot.background = element_rect(fill = "white", colour = NA),
@@ -731,46 +766,134 @@ hotspot_map.outcome <-
   labs(title = "All Cause Mortality - Hotspot Detection") +
   theme_minimal()
 
-hotspot_map.resid.0 <-
+#### Residual figure: state-specific maps (one row per state), no outcome maps
+hotspot_palette <- c("None" = "gray", "Low-Low" = "lightblue", "Low-High" = "green",
+                     "High-Low" = "orange", "High-High" = "red")
+resid.limits <- range(c(merged_proj.resid$resid.0.bym, merged_proj.resid$resid.1.bym),
+                      na.rm = TRUE)
+
+moran.resid <- list(CA = list(m0 = moran_global_CA.resid0, m1 = moran_global_CA.resid1),
+                    GA = list(m0 = moran_global_GA.resid0, m1 = moran_global_GA.resid1),
+                    TX = list(m0 = moran_global_TX.resid0, m1 = moran_global_TX.resid1))
+
+moran_label <- function(mt) {
+  sprintf("Global Moran's I = %.3f, p = %.3f",
+          mt$estimate[["Moran I statistic"]], mt$p.value)
+}
+
+state_theme <- theme_minimal() +
+  theme(axis.text = element_blank(), panel.grid = element_blank(),
+        plot.title = element_text(size = 10),
+        plot.subtitle = element_text(size = 9)) +
+  white_bg
+
+resid_map_state <- function(st, resid_col, model_lab) {
+  ggplot(dplyr::filter(merged_proj.resid, StateAbbr == st)) +
+    geom_sf(aes(fill = .data[[resid_col]])) +
+    scale_fill_viridis_c(name = "Residuals", limits = resid.limits) +
+    labs(title = paste0(st, " - ", model_lab, " Residuals")) +
+    state_theme +
+    theme(legend.position = "none")
+}
+
+hotspot_map_state <- function(st, hotspot_col, model_lab, mt) {
+  ggplot(dplyr::filter(merged_proj.resid, StateAbbr == st)) +
+    geom_sf(aes(fill = .data[[hotspot_col]])) +
+    scale_fill_manual(name = "", values = hotspot_palette,
+                      limits = names(hotspot_palette), drop = FALSE) +
+    labs(title = paste0(st, " - ", model_lab, " Residual Hotspots"),
+         subtitle = moran_label(mt)) +
+    state_theme +
+    theme(legend.position = "none")
+}
+
+state.panels <- list()
+for (st in c("CA", "GA", "TX")) {
+  state.panels <- c(state.panels, list(
+    resid_map_state(st, "resid.0.bym", "Model 0"),
+    hotspot_map_state(st, "hotspot.resid.bym0", "Model 0", moran.resid[[st]]$m0),
+    resid_map_state(st, "resid.1.bym", "Model 1"),
+    hotspot_map_state(st, "hotspot.resid.bym1", "Model 1", moran.resid[[st]]$m1)))
+}
+
+legend.resid <- get_legend(resid_map_state("CA", "resid.0.bym", "Model 0") +
+                             theme(legend.position = "bottom"))
+legend.hotspot <- get_legend(
+  ggplot(data.frame(x = 1, y = seq_along(hotspot_palette),
+                    hotspot = factor(names(hotspot_palette), levels = names(hotspot_palette))),
+         aes(x, y, fill = hotspot)) +
+    geom_tile() +
+    scale_fill_manual(name = "", values = hotspot_palette) +
+    theme_minimal() + white_bg +
+    theme(legend.position = "bottom"))
+
+hotspot_map.resid <- plot_grid(plot_grid(plotlist = state.panels, nrow = 3, ncol = 4),
+                               plot_grid(legend.resid, legend.hotspot, nrow = 1),
+                               nrow = 2, rel_heights = c(12, 1)) |>
+  ggdraw() + white_bg
+
+ggsave("Output/Figures/AllCause_Residuals_Hotspots.png",
+       plot = hotspot_map.resid, bg = "white",
+       width = 14, height = 9, units = "in",
+       dpi = 300)
+
+RanEff.0.map <-
   ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = hotspot.bym0)) +
-  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
-                                            "High-Low", "High-High"),
-                      palette = c("None"="gray", "Low-Low" = "lightblue",
-                                 "Low-High" = "green", "High-Low" = "orange",
-                                 "High-High" = "red")) +
-  labs(title = "Model 0 Residuals - Hotspot Detection") +
+  geom_sf(aes(fill = RE_bym0)) +
+  scale_fill_viridis_c(name = "Random Effects") +
+  labs(title = "Model 0 Random Effects") +
   theme_minimal()
 
-hotspot_map.resid.1 <-
+hotspot_map.RE.0 <-
   ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = hotspot.bym1)) +
+  geom_sf(aes(fill = hotspot.RE.bym0)) +
   scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
                                             "High-Low", "High-High"),
                       palette = c("None"="gray", "Low-Low" = "lightblue",
                                   "Low-High" = "green", "High-Low" = "orange",
                                   "High-High" = "red")) +
-  labs(title = "Model 1 Residuals - Hotspot Detection") +
+  labs(title = "Model 0 Random Effects - Hotspot Detection") +
   theme_minimal()
 
-hotspot_map.resid <- plot_grid(plot_grid(outcome.map +
-                                           theme(legend.position = "bottom"),
-                               hotspot_map.outcome +
-                                 theme(legend.position = "none"), 
-                               hotspot_map.resid.0 +
-                                 theme(legend.position = "none"),  
-                               hotspot_map.resid.1 +
-                                 theme(legend.position = "none"), nrow = 2),
-                               get_legend(hotspot_map.resid.1 +
-                                            theme(legend.position = "bottom", 
-                                                  text = element_text(size = 10))),
-                               nrow = 2, rel_heights = c(6,1)) |>
+RanEff.1.map <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = RE_bym1)) +
+  scale_fill_viridis_c(name = "Random Effects") +
+  labs(title = "Model 1 Random Effects") +
+  theme_minimal()
+
+hotspot_map.RE.1 <-
+  ggplot(merged_proj.resid) +
+  geom_sf(aes(fill = hotspot.RE.bym1)) +
+  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
+                                            "High-Low", "High-High"),
+                      palette = c("None"="gray", "Low-Low" = "lightblue",
+                                  "Low-High" = "green", "High-Low" = "orange",
+                                  "High-High" = "red")) +
+  labs(title = "Model 1 Random Effects - Hotspot Detection") +
+  theme_minimal()
+
+hotspot_map.RE <- plot_grid(plot_grid(outcome.map +
+                                        theme(legend.position = "bottom"),
+                                      hotspot_map.outcome +
+                                        theme(legend.position = "none"),
+                                      RanEff.0.map +
+                                        theme(legend.position = "bottom"),
+                                      hotspot_map.RE.0 +
+                                        theme(legend.position = "none"),
+                                      RanEff.1.map +
+                                        theme(legend.position = "bottom"),
+                                      hotspot_map.RE.1 +
+                                        theme(legend.position = "none"), nrow = 3),
+                            legend.hotspot,
+                            nrow = 2, rel_heights = c(12, 1)) |>
   ggdraw() + white_bg
 
-ggsave("Output/Figures/AllCause_Local_Morans_I_Hotspots.png",
-       plot = hotspot_map.resid, bg = "white",
+ggsave("Output/Figures/AllCause_RandomEffects_Hotspots.png",
+       plot = hotspot_map.RE, bg = "white",
        width = 11, height = 8.5, units = "in",
        dpi = 300)
+
 
 
 # ################          AllCause Mortality - Model 0          ################

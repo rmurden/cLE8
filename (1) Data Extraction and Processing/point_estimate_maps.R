@@ -9,12 +9,14 @@
 #  
 #  
 # Maps produced:
-#   01_cle8_point_score_ws.png     -- continuous score choropleth
-#   02_cle8_cat_point_ws.png       -- CVH category (Low/Moderate/High)
-#   03_lisa_point_score_ws.png     -- LISA clusters
+#   01_cle8_point_score_ws.png     -- continuous CVH score choropleth, one panel
+#                                     per state drawn from its own shapefile
+#   02_cle8_cat_point_ws.png       -- CVH category (Low/Moderate/High), same layout
+#   03_lisa_point_score_ws.png     -- LISA clusters per state, with each state's
+#                                     global Moran's I and p-value
 #
-# Input:  cle8_three_scores_txgaca_within_state.csv
-# Output: figures_maps_within_state/
+# Input:  Data/cle8_three_scores_txgaca_within_state.csv
+# Output: Output/Figures/
 # =============================================================================
 
 library(tidyverse)
@@ -28,7 +30,9 @@ library(viridis)
 
 options(tigris_use_cache = TRUE)
 
-dir.create("figures_maps_within_state", showWarnings = FALSE)
+setwd("C:/Users/rmurden/OneDrive - Emory/Documents/GitHub/cLE8")
+fig_dir <- "Output/Figures"
+dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
 
 # =============================================================================
 # SECTION 1: PALETTE SELECTION
@@ -46,7 +50,7 @@ score_palette <- RColorBrewer::brewer.pal(11, "RdBu")
 cat("Loading within-state scored data...\n")
 
 scores <- read_csv(
-  "cle8_three_scores_txgaca_within_state.csv",
+  "Data/cle8_three_scores_txgaca_within_state.csv",
   show_col_types = FALSE
 ) |>
   mutate(GEOID = str_pad(as.character(CountyFIPS), width = 5, pad = "0"))
@@ -56,7 +60,7 @@ cat(sprintf("  %d counties loaded\n", nrow(scores)))
 state_labels <- c(
   CA = "California\n(Outside Stroke Belt)",
   TX = "Texas\n(Partial Stroke Belt)",
-  GA = "Georgia\n(Full Stroke Belt)"
+  GA = "Georgia\n(Within Stroke Belt)"
 )
 
 # =============================================================================
@@ -93,16 +97,20 @@ map_theme <- theme_void(base_size = 10) +
                                      margin = margin(b = 3)),
     plot.subtitle     = element_text(size = 7, hjust = 0.5, color = "grey40"),
     legend.position   = "bottom",
-    legend.title      = element_text(size = 8, face = "bold"),
-    legend.text       = element_text(size = 7),
-    legend.key.width  = unit(1.0, "cm"),
-    legend.key.height = unit(0.3, "cm"),
-    plot.margin       = margin(4, 4, 4, 4)
+    legend.title      = element_text(size = 12, face = "bold"),
+    legend.text       = element_text(size = 10),
+    legend.key.width  = unit(1.6, "cm"),
+    legend.key.height = unit(0.6, "cm"),
+    plot.margin       = margin(4, 4, 4, 4),
+    plot.background   = element_rect(fill = "white", colour = NA),
+    panel.background  = element_rect(fill = "white", colour = NA),
+    legend.background = element_rect(fill = "white", colour = NA)
   )
 
 fig_annotation_theme <- theme(
   plot.title    = element_text(size = 13, face = "bold", hjust = 0.5),
-  plot.subtitle = element_text(size = 8,  hjust = 0.5, color = "grey40")
+  plot.subtitle = element_text(size = 8,  hjust = 0.5, color = "grey40"),
+  plot.background = element_rect(fill = "white", colour = NA)
 )
 
 # =============================================================================
@@ -111,46 +119,46 @@ fig_annotation_theme <- theme(
 
 cat("\nGenerating continuous choropleth map (point estimate)...\n")
 
-make_ws_panel <- function(geo_sf, score_var, state_abbr, panel_title) {
+# One color scale shared by all three states
+all_scores <- c(geo_ca$cle8_point, geo_tx$cle8_point, geo_ga$cle8_point)
+score_min  <- floor(min(all_scores, na.rm = TRUE) / 10) * 10
+score_max  <- ceiling(max(all_scores, na.rm = TRUE) / 10) * 10
 
-  state_vals <- geo_sf[[score_var]]
-  val_min    <- floor(min(state_vals, na.rm = TRUE) / 10) * 10
-  val_max    <- ceiling(max(state_vals, na.rm = TRUE) / 10) * 10
-
-  fill_sc <- scale_fill_gradientn(
-    colours = score_palette,
-    limits  = c(val_min, val_max),
-    breaks  = c(val_min, val_max),
-    labels  = c(paste0(val_min, "\n(Low CVH)"),
-                paste0(val_max, "\n(High CVH)")),
-    name    = paste0(state_abbr, " Score"),
-    guide   = guide_colorbar(
-      title.position = "top",
-      title.hjust    = 0.5,
-      barwidth       = unit(3, "cm"),
-      barheight      = unit(0.3, "cm")
-    )
+shared_score_fill <- scale_fill_gradientn(
+  colours = score_palette,
+  limits  = c(score_min, score_max),
+  breaks  = c(score_min, score_max),
+  labels  = c(paste0(score_min, "\n(Low CVH)"),
+              paste0(score_max, "\n(High CVH)")),
+  name    = "cLE8 Score",
+  guide   = guide_colorbar(
+    title.position = "top",
+    title.hjust    = 0.5,
+    barwidth       = unit(12, "cm"),
+    barheight      = unit(0.7, "cm")
   )
+)
 
+make_ws_panel <- function(geo_sf, score_var, panel_title) {
   ggplot(geo_sf) +
     geom_sf(aes(fill = .data[[score_var]]), color = "white", linewidth = 0.15) +
-    fill_sc +
+    shared_score_fill +
     labs(title = panel_title) +
-    map_theme +
-    theme(legend.position = "bottom")
+    map_theme
 }
 
-p_ca_score <- make_ws_panel(geo_ca, "cle8_point", "CA", state_labels["CA"])
-p_tx_score <- make_ws_panel(geo_tx, "cle8_point", "TX", state_labels["TX"])
-p_ga_score <- make_ws_panel(geo_ga, "cle8_point", "GA", state_labels["GA"])
+p_ca_score <- make_ws_panel(geo_ca, "cle8_point", state_labels["CA"])
+p_tx_score <- make_ws_panel(geo_tx, "cle8_point", state_labels["TX"])
+p_ga_score <- make_ws_panel(geo_ga, "cle8_point", state_labels["GA"])
 
 p_score <- (p_ca_score | p_tx_score | p_ga_score) +
-  plot_layout(widths = c(1, 1.6, 1)) +
-  plot_annotation(title = "cLE8 Score \u2014 Point Estimate",
-                  theme = fig_annotation_theme)
+  plot_layout(widths = c(1, 1.6, 1), guides = "collect") +
+  plot_annotation(title = "cLE8 Score",
+                  theme = fig_annotation_theme) &
+  theme(legend.position = "bottom")
 
-ggsave(file.path("figures_maps_within_state", "01_cle8_point_score_ws.png"),
-       p_score, width = 14, height = 7, dpi = 300)
+ggsave(file.path(fig_dir, "01_cle8_point_score_ws.png"),
+       p_score, width = 14, height = 7, dpi = 300, bg = "white")
 cat("  Saved: 01_cle8_point_score_ws.png\n")
 
 # =============================================================================
@@ -195,13 +203,13 @@ p_cat <- (p_ca_cat | p_tx_cat | p_ga_cat) +
 
 p_cat <- p_cat +
   plot_annotation(
-    title    = "CVH Category \u2014 Point Estimate Score",
+    title    = "CVH Category",
     subtitle = "Low: 0\u201349 | Moderate: 50\u201379 | High: 80\u2013100",
     theme    = fig_annotation_theme
   )
 
-ggsave(file.path("figures_maps_within_state", "02_cle8_cat_point_ws.png"),
-       p_cat, width = 14, height = 7, dpi = 300)
+ggsave(file.path(fig_dir, "02_cle8_cat_point_ws.png"),
+       p_cat, width = 14, height = 7, dpi = 300, bg = "white")
 cat("  Saved: 02_cle8_cat_point_ws.png\n")
 
 # =============================================================================
@@ -311,12 +319,12 @@ p_lisa <- (p_ca_lisa | p_tx_lisa | p_ga_lisa) / guide_area() +
 
 p_lisa <- p_lisa +
   plot_annotation(
-    title    = "LISA Clusters \u2014 cLE8 Point Estimate",
+    title    = "LISA Clusters \u2014 cLE8",
     theme    = fig_annotation_theme
   )
 
-ggsave(file.path("figures_maps_within_state", "03_lisa_point_score_ws.png"),
-       p_lisa, width = 14, height = 6, dpi = 300)
+ggsave(file.path(fig_dir, "03_lisa_point_score_ws.png"),
+       p_lisa, width = 14, height = 6, dpi = 300, bg = "white")
 cat("  Saved: 03_lisa_point_score_ws.png\n")
 
 ## Cluster counts
@@ -328,4 +336,4 @@ for (state in c("CA", "TX", "GA")) {
               paste(names(counts), counts, sep = "=", collapse = "  ")))
 }
 
-cat("\nDone. Three maps saved to figures_maps_within_state/\n")
+cat("\nDone. Three maps saved to Output/Figures/\n")
