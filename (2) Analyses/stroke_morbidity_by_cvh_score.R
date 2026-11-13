@@ -794,7 +794,7 @@ hotspot_map_state <- function(st, hotspot_col, model_lab, mt) {
 }
 
 state.panels <- list()
-for (st in c("CA", "GA", "TX")) {
+for (st in c("CA", "TX", "GA")) {
   state.panels <- c(state.panels, list(
     resid_map_state(st, "resid.0.bym", "Model 0"),
     resid_map_state(st, "resid.1.bym", "Model 1"),
@@ -823,61 +823,54 @@ ggsave("Output/Figures/Stroke_Residuals_Hotspots.png",
        width = 14, height = 9, units = "in",
        dpi = 300)
 
-RanEff.0.map <-
-  ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = RE_bym0)) +
-  scale_fill_viridis_c(name = "Random Effects") +
-  labs(title = "Model 0 Random Effects") +
-  theme_minimal()
+#### Random-effects figure: same layout as the residual figure
+#### (rows = CA, GA, TX; columns = Model 0 RE, Model 1 RE, Model 0 hotspots, Model 1 hotspots)
+re.limits <- range(c(merged_proj.resid$RE_bym0, merged_proj.resid$RE_bym1), na.rm = TRUE)
 
-hotspot_map.RE.0 <-
-  ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = hotspot.RE.bym0)) +
-  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
-                                            "High-Low", "High-High"),
-                      palette = c("None"="gray", "Low-Low" = "lightblue",
-                                  "Low-High" = "green", "High-Low" = "orange",
-                                  "High-High" = "red")) +
-  labs(title = "Model 0 Random Effects - Hotspot Detection") +
-  theme_minimal()
+moran.RE <- list(CA = list(m0 = moran_global_CA.RE0, m1 = moran_global_CA.RE1),
+                 GA = list(m0 = moran_global_GA.RE0, m1 = moran_global_GA.RE1),
+                 TX = list(m0 = moran_global_TX.RE0, m1 = moran_global_TX.RE1))
 
-RanEff.1.map <-
-  ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = RE_bym1)) +
-  scale_fill_viridis_c(name = "Random Effects") +
-  labs(title = "Model 1 Random Effects") +
-  theme_minimal()
+re_map_state <- function(st, re_col, model_lab) {
+  ggplot(dplyr::filter(merged_proj.resid, StateAbbr == st)) +
+    geom_sf(aes(fill = .data[[re_col]])) +
+    scale_fill_viridis_c(name = "Random Effects", limits = re.limits) +
+    labs(title = paste0(st, " - ", model_lab, " Random Effects")) +
+    state_theme +
+    theme(legend.position = "none")
+}
 
-hotspot_map.RE.1 <-
-  ggplot(merged_proj.resid) +
-  geom_sf(aes(fill = hotspot.RE.bym1)) +
-  scale_fill_discrete(name = "", limits = c("None", "Low-Low", "Low-High", 
-                                            "High-Low", "High-High"),
-                      palette = c("None"="gray", "Low-Low" = "lightblue",
-                                  "Low-High" = "green", "High-Low" = "orange",
-                                  "High-High" = "red")) +
-  labs(title = "Model 1 Random Effects - Hotspot Detection") +
-  theme_minimal()
+re_hotspot_state <- function(st, hotspot_col, model_lab, mt) {
+  ggplot(dplyr::filter(merged_proj.resid, StateAbbr == st)) +
+    geom_sf(aes(fill = .data[[hotspot_col]])) +
+    scale_fill_manual(name = "", values = hotspot_palette,
+                      limits = names(hotspot_palette), drop = FALSE) +
+    labs(title = paste0(st, " - ", model_lab, " Random Effect Hotspots"),
+         subtitle = moran_label(mt)) +
+    state_theme +
+    theme(legend.position = "none")
+}
 
-hotspot_map.RE <- plot_grid(plot_grid(outcome.map +
-                                        theme(legend.position = "bottom"),
-                                      hotspot_map.outcome +
-                                        theme(legend.position = "none"),
-                                      RanEff.0.map +
-                                        theme(legend.position = "bottom"),
-                                      hotspot_map.RE.0 +
-                                        theme(legend.position = "none"),
-                                      RanEff.1.map +
-                                        theme(legend.position = "bottom"),
-                                      hotspot_map.RE.1 +
-                                        theme(legend.position = "none"), nrow = 3),
-                            legend.hotspot,
+re.panels <- list()
+for (st in c("CA", "TX", "GA")) {
+  re.panels <- c(re.panels, list(
+    re_map_state(st, "RE_bym0", "Model 0"),
+    re_map_state(st, "RE_bym1", "Model 1"),
+    re_hotspot_state(st, "hotspot.RE.bym0", "Model 0", moran.RE[[st]]$m0),
+    re_hotspot_state(st, "hotspot.RE.bym1", "Model 1", moran.RE[[st]]$m1)))
+}
+
+legend.re <- get_legend(re_map_state("CA", "RE_bym0", "Model 0") +
+                          theme(legend.position = "bottom"))
+
+hotspot_map.RE <- plot_grid(plot_grid(plotlist = re.panels, nrow = 3, ncol = 4),
+                            plot_grid(legend.re, legend.hotspot, nrow = 1),
                             nrow = 2, rel_heights = c(12, 1)) |>
   ggdraw() + white_bg
 
 ggsave("Output/Figures/Stroke_RandomEffects_Hotspots.png",
        plot = hotspot_map.RE, bg = "white",
-       width = 11, height = 8.5, units = "in",
+       width = 14, height = 9, units = "in",
        dpi = 300)
 
 
